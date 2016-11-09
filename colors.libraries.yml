@@ -1,0 +1,8 @@
+colors:
+  version: VERSION
+  js:
+    js/colors.js: {}
+  css:
+    css/colors.admin.css: {}
+  dependencies:
+    - color/drupal.color

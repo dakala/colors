@@ -1,0 +1,33 @@
+<?php
+
+/**
+ * @file
+ *
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+
+function colors_form_search_block_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+
+}
+
+// @todo:
+function colors_get_info($entity = NULL) {
+  return \Drupal::configFactory()->getEditable('colors.settings');
+}
+
+/**
+ * Retrieves the color palette for a particular theme.
+ */
+function colors_get_palette($config) {
+  return $config->get('palette');
+}
+
+function colors_load_colorpicker() {
+  return array(
+    'color_picker' => array(
+      '#prefix' => '<div id="colors-colorpicker">',
+      '#suffix' => '</div>',
+    ),
+  );
+}
