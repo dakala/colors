@@ -7,13 +7,31 @@
 
 use Drupal\Core\Form\FormStateInterface;
 
+/**
+ * Implements hook_theme().
+ */
+function colors_theme() {
+  return array(
+    'colors_admin_settings' => array(
+      'render element' => 'form',
+    ),
+  );
+}
+
+
 function colors_form_search_block_form_alter(&$form, FormStateInterface $form_state, $form_id) {
 
 }
 
 // @todo:
 function colors_get_info($entity = NULL) {
-  return \Drupal::configFactory()->getEditable('colors.settings');
+  $config = NULL;
+  if ($entity) {
+    $config = \Drupal::configFactory()->getEditable($entity);
+  }
+  $config = (!$entity || !$config)  ? \Drupal::configFactory()->getEditable('colors.settings') : $config;
+
+   return $config;
 }
 
 /**
@@ -23,6 +41,17 @@ function colors_get_palette($config) {
   return $config->get('palette');
 }
 
+function colors_get_enabled($entity) {
+  $configs = [];
+  foreach (\Drupal::configFactory()->listAll("colors.$entity.") as $key) {
+    $config = \Drupal::configFactory()->getEditable($key);
+       if ($config->get('enabled')) {
+      $configs[] = $config;
+    }
+  }
+  return $configs;
+}
+
 function colors_load_colorpicker() {
   return array(
     'color_picker' => array(
@@ -30,4 +59,73 @@ function colors_load_colorpicker() {
       '#suffix' => '</div>',
     ),
   );
+}
+
+// @todo:
+function template_preprocess_colors_admin_settings(&$variables) {
+  $form = &$variables['form'];
+
+  $rows = array();
+  $form['order_settings']['table'] = array(
+    '#theme' => 'table',
+    '#header' => array(
+      t('Module'),
+      t('Weight'),
+    ),
+    '#rows' => $rows,
+    '#attributes' => array('id' => 'colors-settings'),
+  );
+
+  drupal_attach_tabledrag($form['modules'], array(
+    'action' => 'order',
+    'relationship' => 'sibling',
+    'group' => 'colors-weight',
+  ));
+
+  return drupal_render_children($form);
+}
+
+/**
+ * Returns HTML for the settings form.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - form: A render element representing the form.
+ */
+function theme_colors_admin_settings($variables) {
+  $form = $variables['form'];
+
+  $rows = array();
+  foreach (\Drupal\Core\Render\Element::children($form['modules']) as $module) {
+    $row = array();
+    $row[] = $form['modules'][$module]['#name'];
+    $row[] = drupal_render($form['modules'][$module]['weight']);
+
+    $rows[] = array('data' => $row, 'class' => array('draggable'));
+  }
+
+  $form['order_settings']['table'] = array(
+    '#theme' => 'table',
+    '#header' => array(
+      t('Module'),
+      t('Weight'),
+    ),
+    '#rows' => $rows,
+    '#attributes' => array('id' => 'colors-settings'),
+  );
+//  drupal_add_tabledrag('colors-settings', 'order', 'sibling', 'colors-weight');
+
+  drupal_attach_tabledrag($form['modules'], array(
+    'action' => 'order',
+    'relationship' => 'sibling',
+    'group' => 'colors-weight',
+  ));
+
+//  drupal_attach_tabledrag('my-module-table', array(
+//    'action' => 'order',
+//    'relationship' => 'sibling',
+//    'group' => 'my-elements-weight',
+//  ));
+
+  return drupal_render_children($form);
 }
