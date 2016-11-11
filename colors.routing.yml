@@ -29,15 +29,6 @@ colors.ui_settings_entity.users:
   requirements:
     _permission: 'administer site configuration'
 
-#colors.ui_settings_entity.user_type:
-#  path: '/admin/config/user-interface/colors/user/{type}'
-#  defaults:
-#    _form: '\Drupal\colors\Form\ColorsSettingsForm'
-#    _title: 'Colors'
-#    type: NULL
-#  requirements:
-#    _permission: 'administer site configuration'
-
 colors.ui_settings_entity.user:
   path: '/admin/config/user-interface/colors/users/user'
   defaults:
@@ -45,13 +36,7 @@ colors.ui_settings_entity.user:
     _title: 'Users'
   requirements:
     _permission: 'administer site configuration'
-#colors.ui_settings_entity.user_current:
-#  path: '/admin/config/user-interface/colors/users/user_current'
-#  defaults:
-#    _form: '\Drupal\colors\Form\ColorsSettingsForm'
-#    _title: 'Current user'
-#  requirements:
-#    _permission: 'administer site configuration'
+
 colors.ui_settings_entity.user_role:
   path: '/admin/config/user-interface/colors/users/user_role'
   defaults:

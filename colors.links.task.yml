@@ -20,12 +20,6 @@ colors.ui_settings_entity.users:
   base_route: colors.ui_settings
   weight: 100
 
-#colors.ui_settings_entity.type:
-#  route_name: colors.ui_settings_entity.user_type
-#  title: 'Entity name'
-#  base_route: colors.ui_settings_entity.user
-#  deriver: Drupal\colors\Plugin\Derivative\ColorsLocalTask
-
 colors.ui_settings_entity.user_current:
   route_name: colors.ui_settings_entity.users
   title: 'Current user'
@@ -36,7 +30,6 @@ colors.ui_settings_entity.user:
   route_name: colors.ui_settings_entity.user
   title: 'Users'
   parent_id: colors.ui_settings_entity.users
-
 
 colors.ui_settings_entity.user_role:
   route_name: colors.ui_settings_entity.user_role
