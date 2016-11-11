@@ -46,8 +46,4 @@ class NodeScheme extends PluginBase implements ColorsSchemeInterface, ContainerF
     );
   }
 
-  public function testFunc() {
-    return __FUNCTION__;
-  }
-
 }
