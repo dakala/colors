@@ -86,8 +86,6 @@ class ColorsSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $route = \Drupal::routeMatch();
-    $entity = $this->getEntityFromRoute($route);
     // Color picker.
     $form = colors_load_colorpicker();
     $form['#attached'] = array(
@@ -96,32 +94,17 @@ class ColorsSettingsForm extends ConfigFormBase {
       ),
     );
 
-    $global_config = \Drupal::configFactory()->getEditable('colors.settings');
+    $entity = $this->getEntityFromRoute(\Drupal::routeMatch());
+    $plugins = \Drupal::service('plugin.manager.colors')->getDefinitions();
+    $plugin = $plugins[$entity];
 
-    $config = colors_get_info($entity);
-
-    $palette = colors_get_palette($global_config);
-
-    dpm($palette);
-
-
-    $names = $global_config->get('fields');
-    $form['palette']['#tree'] = TRUE;
-//    foreach ($palette as $name => $value) {
-//      if (isset($names[$name])) {
-//        $form['palette'][$name] = array(
-//          '#type' => 'textfield',
-//          '#title' => $names[$name],
-//          '#value_callback' => 'color_palette_color_value',
-//          '#default_value' => $value,
-//          '#size' => 8,
-//          '#attributes' => array('class' => array('colorpicker-input')),
-//        );
-//      }
-//    }
-
-    $this->getExtraFields($form, $entity);
-
+    // Global settings tab.
+    if (!$plugin) {
+      $this->getDefaultFormElements($form);
+    }
+    else {
+      $this->getFormElements($form, $entity);
+    }
 
     return parent::buildForm($form, $form_state);
   }
@@ -139,106 +122,190 @@ class ColorsSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    // @todo:
+    $plugin = $form_state->getValue('plugin');
 
-    parent::submitForm($form, $form_state);
+    foreach ($form_state->getValue('palette') as $id => $palette) {
+      \Drupal::configFactory()->getEditable($id)
+        ->set('type', $plugin['id'])
+        ->set('label', $plugin['title'])
+        ->set('enabled', $form_state->getValue($form_state->getValue('id')))
+        ->set('palette', $palette)
+        ->set('weight', $plugin['weight'])
+        ->save();
+    }
   }
 
-  protected function getExtraFields(&$form, $entity) {
-    $plugins = \Drupal::service('plugin.manager.colors')->getDefinitions();
-    $plugin = $plugins[$entity];
+  /**
+   * Get form element for default settings.
+   *
+   * @param array $form
+   */
+  protected function getDefaultFormElements(&$form) {
+    $config = colors_get_info();
+    $palette = colors_get_palette($config);
+    $names = $config->get('fields');
 
-    if (!$plugin) {
-      // Global settings tab.
-      $form['process_order'] = array(
-        '#tree' => TRUE,
-        'info' => array(
-          '#type' => 'item',
-          '#title' => t('Process order'),
-        ),
-        'enabled' => array(
-          '#type' => 'checkbox',
-          '#title' => t('Change the CSS processing order.'),
-          '#default_value' => \Drupal::configFactory()->getEditable('colors.settings')->get('override'),
-          '#description' => t('Color order is cascading, CSS from modules at the bottom will override the top.'),
-        ),
-      );
-
-      $form['modules'] = array(
-        '#tree' => TRUE,
-      );
-      $delta = 0;
-//      foreach (module_invoke_all('colors_info') as $module => $info) {
-//        if (!variable_get("colors_$module" . '_enabled', FALSE)) {
-//          continue;
-//        }
-//        $weight = variable_get('colors_weight_' . $module, $delta);
-//        $form['modules'][$module]['#name'] = $info['title'];
-//        $form['modules'][$module]['#weight'] = $weight;
-//        $form['modules'][$module]['weight'] = array(
-//          '#type' => 'textfield',
-//          '#title' => t('Weight for @title', array('@title' => $info['title'])),
-//          '#title_display' => 'invisible',
-//          '#size' => 4,
-//          '#default_value' => $weight,
-//          '#attributes' => array('class' => array('colors-weight')),
-//        );
-//        $delta++;
-//      }
-//      uasort($form['modules'], 'element_sort');
-
-      $form['order_settings'] = array(
-        '#type' => 'container',
-        '#states' => array(
-          'visible' => array(
-            'input[name="process_order[enabled]"]' => array('checked' => TRUE),
-          ),
-        ),
-      );
-
+    $form['palette']['#tree'] = TRUE;
+    foreach ($palette as $name => $value) {
+      if (isset($names[$name])) {
+        $form['palette'][$name] = array(
+          '#type' => 'textfield',
+          '#title' => $names[$name],
+          '#value_callback' => 'color_palette_color_value',
+          '#default_value' => $value,
+          '#size' => 8,
+          '#attributes' => array('class' => array('colorpicker-input')),
+        );
+      }
     }
-    else {
 
-      $plugin_instance = \Drupal::service('plugin.manager.colors')->createInstance($plugin['id']);
+    $form['process_order'] = array(
+      '#tree' => TRUE,
+      'info' => array(
+        '#type' => 'item',
+        '#title' => t('Process order'),
+      ),
+      'enabled' => array(
+        '#type' => 'checkbox',
+        '#title' => t('Change the CSS processing order.'),
+        '#default_value' => \Drupal::configFactory()->getEditable('colors.settings')->get('override'),
+        '#description' => t('Color order is cascading, CSS from modules at the bottom will override the top.'),
+      ),
+    );
 
-      if ($plugin_instance) {
-        dpm($plugin_instance);
-        dpm($plugin_instance->testFunc());
-      }
+    $plugins = \Drupal::service('plugin.manager.colors')->getDefinitions();
+    foreach ($plugins as $id => $plugin) {
+      $weight = 0;
+      $form['entities'][$id]['#name'] = $plugin['title'];
+      $form['entities'][$id]['#weight'] = $weight;
+      $form['entities'][$id]['weight'] = [
+        '#type' => 'textfield',
+        '#title' => t('Weight for @title', ['@title' => $plugin['title']]),
+        '#title_display' => 'invisible',
+        '#size' => 4,
+        '#default_value' => $weight,
+        '#attributes' => ['class' => ['colors-weight']],
+        '#theme' => 'colors_admin_settings',
+      ];
+    }
 
+    uasort($form['entities'], ['Drupal\Component\Utility\SortArray', 'sortByWeightElement']);
 
+    $form['entities'] = ['#tree' => TRUE];
 
+    $form['order_settings'] = [
+      '#type' => 'container',
+      '#states' => [
+        'visible' => [
+          'input[name="process_order[enabled]"]' => ['checked' => TRUE],
+        ],
+      ],
+    ];
+  }
 
+  /**
+   * Get settings form elements.
+   *
+   * @param array $form
+   * @param string $entity
+   */
+  protected function getFormElements(&$form, $entity) {
+    $plugin = \Drupal::service('plugin.manager.colors')->getDefinition($entity);
+    if (!$plugin['id']) {
+      return;
+    }
 
-      # colors.node.article
-      # colors.user.1234
-      # colors.user_role.administrator
-      # colors.vocabulary.tags
+    $form[$plugin['id']] = [
+      '#type' => 'item',
+      '#title' => t('@title colors', ['@title' => $plugin['title']]),
+      '#description' => $plugin['description'],
+    ];
 
-      $multiple = $plugin['multiple'];
-      $callback = $plugin['callback'];
+    $multiple = !empty($plugin['multiple']);
+    $repeat = !empty($multiple) ? $plugin['multiple']() : [NULL => NULL];
 
-      // vocabs
-      $options = [];
-      if ($multiple && is_callable($multiple)) {
-        $parents = $multiple();
-        foreach ($parents as $parent) {
-          $options[$parent->id()] = $callback($parent);
+    $enabled = colors_get_enabled($entity) ? TRUE : FALSE;
+
+    foreach ($repeat as $id => $repeat_value) {
+      $config_name = "colors-$entity";
+      $config_name .= !empty($multiple) ? "-$id" : '';
+
+      $element = [
+        '#type' => 'details',
+        '#title' => !empty($multiple) ? $repeat_value->label() : t('@title colors', array('@title' => $plugin['title'])),
+        '#collapsible' => TRUE,
+        '#open' => $enabled,
+        '#attributes' => ['class' => ['overflow-hidden']],
+        '#prefix' => '<div class="clearfix">',
+        '#suffix' => '</div>',
+      ];
+
+      $element[$config_name] = [
+        '#type' => 'checkbox',
+        '#title' => $plugin['label'],
+        '#default_value' => $enabled,
+      ];
+
+      $element['plugin'] = [
+        '#type' => 'value',
+        '#value' => $plugin,
+      ];
+
+      $element['id'] = [
+        '#type' => 'value',
+        '#value' => $config_name,
+      ];
+
+      foreach ($plugin['callback']($id) as $key => $label) {
+        //$config_id = "colors.$entity.$key";
+        $config_id = str_replace('-', '.', $config_name) . ".$key";
+
+        $element['palette'][$config_id] = [
+          '#type' => 'details',
+          '#title' => t($label),
+          '#collapsible' => TRUE,
+          '#open' => TRUE,
+          '#attributes' => ['class' => ['views-left-25']],
+          '#states' => [
+            'visible' => [
+              ':input[name="' . $config_name . '"]' => ['checked' => TRUE],
+            ],
+          ],
+        ];
+
+        // Get configs.
+        $default_config = colors_get_info();
+        $config = colors_get_info($config_id);
+        $config = ($config->isNew()) ? $default_config : $config;
+        // Get palette.
+        $palette = colors_get_palette($config);
+
+        $names = $default_config->get('fields');
+
+        $element['palette']['#tree'] = TRUE;
+
+        foreach ($palette as $name => $value) {
+          if (isset($names[$name])) {
+            $element['palette'][$config_id][$name] = [
+              '#type' => 'textfield',
+              '#title' => $names[$name],
+              '#value_callback' => 'color_palette_color_value',
+              '#default_value' => $value,
+              '#maxlength' => 7,
+              '#size' => 7,
+              '#attributes' => ['class' => ['colorpicker-input']],
+              '#states' => [
+                'visible' => [
+                  ':input[name="' . $config_name . '"]' => ['checked' => TRUE],
+                ],
+              ],
+            ];
+          }
         }
       }
-      elseif (is_callable($callback)) {
-          $options = $callback();
-      }
 
-      dpm($options);
-
-
-      $default_palette = \Drupal::configFactory()->getEditable('colors.settings')->get('palette');
-      if($config_factory = \Drupal::configFactory()->listAll("colors.$entity.")) {
-        foreach ($config_factory as $config) {
-
-        }
-      }
+      $element_key = !empty($multiple) ? $id : 'details';
+      $form[$element_key] = $element;
     }
   }
 
