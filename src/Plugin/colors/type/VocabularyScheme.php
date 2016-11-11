@@ -48,8 +48,8 @@ class VocabularyScheme extends PluginBase implements ColorsSchemeInterface, Cont
   }
 
 
-  public function getTerms($vocabulary) {
-    $tree = \Drupal::entityManager()->getStorage('taxonomy_term')->loadTree($vocabulary->id());
+  public function getTerms($vid) {
+    $tree = \Drupal::entityManager()->getStorage('taxonomy_term')->loadTree($vid);
     $terms = array();
     foreach ($tree as $term) {
       $terms[$term->tid] = $term->name;
