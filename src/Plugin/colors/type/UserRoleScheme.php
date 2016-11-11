@@ -20,7 +20,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   default = TRUE,
  *   label = @Translation("Enable colors for user role"),
  *   description = @Translation("Colors for user roles. If enabled, you may set colors for each user role below."),
- *   callback = "user_roles",
+ *   callback = "\Drupal\colors\Plugin\colors\type\UserRoleScheme::getRoles",
  *   weight = 1,
  * )
  */
@@ -47,6 +47,14 @@ class UserRoleScheme extends PluginBase implements ColorsSchemeInterface, Contai
       $plugin_id,
       $plugin_definition
     );
+  }
+
+  public function getRoles() {
+    $roles = [];
+    foreach (user_roles() as $role) {
+      $roles[$role->id()] = $role->label();
+    }
+    return $roles;
   }
 
 }
