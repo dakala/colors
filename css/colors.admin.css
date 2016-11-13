@@ -16,8 +16,14 @@ details.overflow-hidden {
     overflow: hidden;
 }
 
+table#colors-entities,
+#colors-ui-settings .tabledrag-toggle-weight-wrapper {
+    width: 50%;
+}
 
-
+#colors-ui-settings .tabledrag-changed-warning {
+    width: 45%;
+}
 
 /* deprecated? */
 .fieldset-wrapper {
