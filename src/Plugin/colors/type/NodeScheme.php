@@ -3,8 +3,6 @@
 namespace Drupal\colors\Plugin\colors\type;
 
 use Drupal\colors\Plugin\ColorsSchemeInterface;
-use Drupal\Component\Plugin\PluginInspectionInterface;
-use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Plugin\PluginBase;

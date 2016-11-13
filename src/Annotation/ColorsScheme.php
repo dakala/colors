@@ -1,10 +1,5 @@
 <?php
 
-/**
- * @file
- * Contains \Drupal\fullcalendar\Annotation\FullcalendarOption.
- */
-
 namespace Drupal\colors\Annotation;
 
 use Drupal\Component\Annotation\Plugin;

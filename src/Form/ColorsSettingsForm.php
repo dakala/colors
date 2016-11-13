@@ -3,16 +3,7 @@
 namespace Drupal\colors\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
-use Drupal\Component\Utility\Unicode;
-use Drupal\Core\Asset\CssOptimizer;
-use Drupal\Component\Utility\Bytes;
-use Drupal\Component\Utility\Environment;
-use Drupal\Core\Block\BlockPluginInterface;
-use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Language\LanguageInterface;
-use Drupal\Core\Render\Element\Textfield;
-use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Component\Plugin\PluginManagerInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
