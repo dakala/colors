@@ -112,25 +112,37 @@ class ColorsSettingsForm extends ConfigFormBase {
   /**
    * {@inheritdoc}
    */
-  public function validateForm(array &$form, FormStateInterface $form_state) {
-    // @todo:
-
-    parent::validateForm($form, $form_state);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $plugin = $form_state->getValue('plugin');
-
-    foreach ($form_state->getValue('palette') as $id => $palette) {
-      \Drupal::configFactory()->getEditable($id)
-        ->set('type', $plugin['id'])
-        ->set('label', $plugin['title'])
-        ->set('enabled', $form_state->getValue($form_state->getValue('id')))
-        ->set('palette', $palette)
-        ->set('weight', $plugin['weight'])
+    if ($plugin) {
+      foreach ($form_state->getValue('palette') as $id => $palette) {
+        \Drupal::configFactory()->getEditable($id)
+          ->set('type', $plugin['id'])
+          ->set('label', $plugin['title'])
+          ->set('enabled', $form_state->getValue($form_state->getValue('id')))
+          ->set('palette', $palette)
+          ->set('weight', $plugin['weight'])
+          ->save();
+      }
+      // Update settings.
+      $config = \Drupal::configFactory()->getEditable('colors.settings');
+      $order = $config->get('order');
+      if ($form_state->getValue($form_state->getValue('id'))) {
+        // Enabled.
+        $order[$plugin['id']] = 0;
+      }
+      else {
+        // Disabled.
+        unset($order[$plugin['id']]);
+      }
+      $config->set('order', $order)->save();
+    }
+    else {
+      $process = $form_state->getValue('process_order');
+      \Drupal::configFactory()->getEditable('colors.settings')
+        ->set('override', $process['enabled'])
+        ->set('order', $process['enabled'] ? colors_get_weights($form_state) : [])
+        ->set('palette', $form_state->getValue('palette'))
         ->save();
     }
   }
@@ -159,48 +171,64 @@ class ColorsSettingsForm extends ConfigFormBase {
       }
     }
 
-    $form['process_order'] = array(
+    $form['process_order'] = [
       '#tree' => TRUE,
-      'info' => array(
+      'info' => [
         '#type' => 'item',
         '#title' => t('Process order'),
-      ),
-      'enabled' => array(
+      ],
+      'enabled' => [
         '#type' => 'checkbox',
         '#title' => t('Change the CSS processing order.'),
         '#default_value' => \Drupal::configFactory()->getEditable('colors.settings')->get('override'),
         '#description' => t('Color order is cascading, CSS from modules at the bottom will override the top.'),
-      ),
-    );
-
-    $plugins = \Drupal::service('plugin.manager.colors')->getDefinitions();
-    foreach ($plugins as $id => $plugin) {
-      $weight = 0;
-      $form['entities'][$id]['#name'] = $plugin['title'];
-      $form['entities'][$id]['#weight'] = $weight;
-      $form['entities'][$id]['weight'] = [
-        '#type' => 'textfield',
-        '#title' => t('Weight for @title', ['@title' => $plugin['title']]),
-        '#title_display' => 'invisible',
-        '#size' => 4,
-        '#default_value' => $weight,
-        '#attributes' => ['class' => ['colors-weight']],
-        '#theme' => 'colors_admin_settings',
-      ];
-    }
-
-    uasort($form['entities'], ['Drupal\Component\Utility\SortArray', 'sortByWeightElement']);
-
-    $form['entities'] = ['#tree' => TRUE];
+      ],
+    ];
 
     $form['order_settings'] = [
       '#type' => 'container',
       '#states' => [
         'visible' => [
-          'input[name="process_order[enabled]"]' => ['checked' => TRUE],
+          ':input[name="process_order[enabled]"]' => ['checked' => TRUE],
         ],
       ],
     ];
+
+    $form['order_settings']['entities'] = [
+      '#type' => 'table',
+      '#header' => [$this->t('Name'), $this->t('Weight')],
+      '#empty' => $this->t('No entities available.'),
+      '#attributes' => [
+        'id' => 'colors-entities',
+      ],
+    ];
+
+    $configs = \Drupal::configFactory()
+      ->getEditable('colors.settings')
+      ->get('order');
+    foreach ($configs as $config_id => $weight) {
+      $plugin = \Drupal::service('plugin.manager.colors')
+        ->getDefinition($config_id);
+
+      $form['order_settings']['entities'][$config_id]['entity'] = ['#plain_text' => $plugin['title']];
+      $form['order_settings']['entities'][$config_id]['weight'] = [
+        '#type' => 'weight',
+        '#title' => $this->t('Weight for added entity'),
+        '#title_display' => 'invisible',
+        '#default_value' => $weight,
+        '#attributes' => [
+          'class' => ['color-weight'],
+        ],
+      ];
+
+      $form['order_settings']['entities'][$config_id]['#attributes']['class'][] = 'draggable';
+
+      $form['order_settings']['entities']['#tabledrag'][] = [
+        'action' => 'order',
+        'relationship' => 'sibling',
+        'group' => 'color-weight',
+      ];
+    }
   }
 
   /**
@@ -256,6 +284,7 @@ class ColorsSettingsForm extends ConfigFormBase {
         '#value' => $config_name,
       ];
 
+//      @todo: don't display vocab fieldset if there's no terms yet.
       foreach ($plugin['callback']($id) as $key => $label) {
         //$config_id = "colors.$entity.$key";
         $config_id = str_replace('-', '.', $config_name) . ".$key";
